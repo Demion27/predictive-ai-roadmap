@@ -13,3 +13,5 @@ dependencies = [
     "matplotlib>=3.7.0",
     "jupyter>=1.0.0",
 ]
+[tool.setuptools.packages.find]
+where = ["src"]
