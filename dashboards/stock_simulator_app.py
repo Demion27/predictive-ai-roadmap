@@ -11,6 +11,34 @@ from stock_simulator import (
 )
 
 
+@st.cache_data(show_spinner=False)
+def run_gaussian_simulation(S0, mu, sigma, T, n_steps, n_paths, seed):
+    return simulate_gbm(
+        S0=float(S0),
+        mu=float(mu),
+        sigma=float(sigma),
+        T=float(T),
+        n_steps=int(n_steps),
+        n_paths=int(n_paths),
+        seed=int(seed),
+    )
+
+
+@st.cache_data(show_spinner=False)
+def run_garch_simulation(n_steps, garch_mu, garch_omega, garch_alpha, garch_beta, garch_start_price, n_paths, seed, garch_burn):
+    return simulate_garch(
+        n_steps=int(n_steps),
+        mu=float(garch_mu),
+        omega=float(garch_omega),
+        alpha=float(garch_alpha),
+        beta=float(garch_beta),
+        start_price=float(garch_start_price),
+        n_paths=int(n_paths),
+        seed=int(seed),
+        burn=int(garch_burn),
+    )
+
+
 st.set_page_config(page_title="Stock Simulation Dashboard", layout="wide")
 st.title("Gaussian vs. GARCH Simulation Dashboard")
 
@@ -45,9 +73,14 @@ garch_start_price = st.sidebar.number_input("GARCH start price", value=100.0, mi
 garch_burn = st.sidebar.number_input("GARCH burn-in", value=100, min_value=0, max_value=1000, step=1)
 
 window_size = st.sidebar.slider("Moving-average and volatility window", 2, 60, 20)
+selected_ma_method = st.sidebar.selectbox("Moving-average method", ["Simple", "Exponential"], index=0)
+selected_vol_method = st.sidebar.selectbox("Rolling-volatility method", ["Log returns", "Percent change"], index=0)
+
+ma_method = "simple" if selected_ma_method == "Simple" else "exponential"
+vol_method = "log" if selected_vol_method == "Log returns" else "pct"
 
 if "Gaussian" in selected_modes:
-    gaussian_df = simulate_gbm(
+    gaussian_df = run_gaussian_simulation(
         S0=float(S0),
         mu=float(mu),
         sigma=float(sigma),
@@ -56,28 +89,50 @@ if "Gaussian" in selected_modes:
         n_paths=int(n_paths),
         seed=int(seed),
     )
-    gaussian_ma = calculate_moving_average(gaussian_df, window_size=int(window_size), columns=list(gaussian_df.columns))
-    gaussian_vol = calculate_rolling_volatility(gaussian_df, window_size=int(window_size), columns=list(gaussian_df.columns), annualize=False)
+    gaussian_ma = calculate_moving_average(
+        gaussian_df,
+        window_size=int(window_size),
+        method=ma_method,
+        columns=list(gaussian_df.columns),
+    )
+    gaussian_vol = calculate_rolling_volatility(
+        gaussian_df,
+        window_size=int(window_size),
+        columns=list(gaussian_df.columns),
+        method=vol_method,
+        annualize=False,
+    )
 
 if "GARCH" in selected_modes:
     try:
-        prices_garch, true_vol, returns = simulate_garch(
+        prices_garch, true_vol, returns = run_garch_simulation(
             n_steps=int(n_steps),
-            mu=float(garch_mu),
-            omega=float(garch_omega),
-            alpha=float(garch_alpha),
-            beta=float(garch_beta),
-            start_price=float(garch_start_price),
+            garch_mu=float(garch_mu),
+            garch_omega=float(garch_omega),
+            garch_alpha=float(garch_alpha),
+            garch_beta=float(garch_beta),
+            garch_start_price=float(garch_start_price),
             n_paths=int(n_paths),
             seed=int(seed),
-            burn=int(garch_burn),
+            garch_burn=int(garch_burn),
         )
     except ValueError as exc:
         st.error(str(exc))
         st.stop()
 
-    garch_ma = calculate_moving_average(prices_garch, window_size=int(window_size), columns=list(prices_garch.columns))
-    garch_vol = calculate_rolling_volatility(prices_garch, window_size=int(window_size), columns=list(prices_garch.columns), annualize=False)
+    garch_ma = calculate_moving_average(
+        prices_garch,
+        window_size=int(window_size),
+        method=ma_method,
+        columns=list(prices_garch.columns),
+    )
+    garch_vol = calculate_rolling_volatility(
+        prices_garch,
+        window_size=int(window_size),
+        columns=list(prices_garch.columns),
+        method=vol_method,
+        annualize=False,
+    )
 
 st.subheader("Simulation overview")
 

@@ -58,10 +58,13 @@ def test_calculate_rolling_volatility_returns_expected_structure():
     df = pd.DataFrame({"price": [100.0, 101.0, 99.0, 102.0, 100.0]})
 
     result = calculate_rolling_volatility(df, window_size=2, columns="price", annualize=False)
+    pct_result = calculate_rolling_volatility(df, window_size=2, columns="price", method="pct", annualize=False)
 
     assert isinstance(result, pd.DataFrame)
     assert list(result.columns) == ["price volatiltity"]
     assert result.shape[0] == 3
+    assert isinstance(pct_result, pd.DataFrame)
+    assert pct_result.shape[0] == 3
 
     with pytest.raises(TypeError):
         calculate_rolling_volatility([1, 2, 3], window_size=2)
